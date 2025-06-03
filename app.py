@@ -37,7 +37,9 @@ def handle_slack_command(text, response_url):
         atr_data = atr_response.json()
 
         # Step 3: Format reply
-        atr_reply = atr_data.get("answers", [{}])[0].get("answer", "No response from ATR.")
+        #atr_reply = atr_data.get("answers", [{}])[0].get("answer", "No response from ATR.")
+        atr_reply = atr_data.get("result", {}).get("speech", "🤖 No speech response from ATR.")
+
 
         # Step 4: Respond to Slack
         slack_payload = {
