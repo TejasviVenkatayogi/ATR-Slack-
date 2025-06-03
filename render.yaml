@@ -1,0 +1,18 @@
+
+services:
+  - type: web
+    name: flask-slack-atr
+    env: python
+    buildCommand: ""
+    startCommand: python app.py
+    envVars:
+      - key: SLACK_BOT_TOKEN
+        value: xoxb-8954890085095-9016266247392-xAqcNtlmihlpJaRFXH7KwStH
+      - key: SLACK_SIGNING_SECRET
+        value: 64afcc485b93649acb7f6f45f2158158
+      - key: ATR_USERNAME
+        value: ChatbotTestuser
+      - key: ATR_PASSWORD
+        value: User@1234
+      - key: ATR_BASE_URL
+        value: https://dh1-internalatrgm.atrmywizard-aiops.com
