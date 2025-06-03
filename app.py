@@ -6,6 +6,9 @@ import hmac
 import time
 
 app = Flask(__name__)
+@app.route('/')
+def index():
+    return "✅ Flask app for Slack and ATR is running on Render!"
 
 SLACK_BOT_TOKEN = 'xoxb-8954890085095-9016266247392-xAqcNtlmihlpJaRFXH7KwStH'
 SLACK_SIGNING_SECRET = '64afcc485b93649acb7f6f45f2158158'
