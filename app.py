@@ -4,10 +4,48 @@ import requests
 
 app = Flask(__name__)
 
-# ATR credentials and endpoint
+# ATR credentials and endpoint (you should use environment variables later for security)
 ATR_USERNAME = "ChatbotTestuser"
 ATR_PASSWORD = "User@1234"
 ATR_BASE_URL = "https://dh1-internalatrgm.atrmywizard-aiops.com"
+
+def build_slack_blocks_from_attachments(attachments):
+    blocks = []
+
+    if not attachments or not isinstance(attachments, dict):
+        return blocks
+
+    # Add main title or prompt
+    for item in attachments.get("body", []):
+        if item.get("type") == "TextBlock":
+            blocks.append({
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*{item.get('text')}*"
+                }
+            })
+
+    # Add buttons from ActionSet or actions
+    button_actions = []
+    for item in attachments.get("body", []) + attachments.get("actions", []):
+        if item.get("type") == "Action.Submit":
+            button_actions.append({
+                "type": "button",
+                "text": {
+                    "type": "plain_text",
+                    "text": item.get("title", "Click")
+                },
+                "value": item.get("data", {}).get("msteams", {}).get("text", "clicked")
+            })
+
+    if button_actions:
+        blocks.append({
+            "type": "actions",
+            "elements": button_actions
+        })
+
+    return blocks
 
 def handle_slack_command(text, response_url):
     try:
@@ -36,15 +74,24 @@ def handle_slack_command(text, response_url):
         atr_response.raise_for_status()
         atr_data = atr_response.json()
 
-        # Step 3: Format reply
-        #atr_reply = atr_data.get("answers", [{}])[0].get("answer", "No response from ATR.")
-        atr_reply = atr_data.get("result", {}).get("speech", "🤖 No speech response from ATR.")
+        # Step 3: Extract Adaptive Card
+        attachments = atr_data.get("attachments", None)
+        blocks = build_slack_blocks_from_attachments(attachments)
 
+        if not blocks:
+            fallback_reply = atr_data.get("result", {}).get("speech", "🤖 No speech or UI response from ATR.")
+            blocks = [{
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": fallback_reply
+                }
+            }]
 
         # Step 4: Respond to Slack
         slack_payload = {
             "response_type": "in_channel",
-            "text": f"*Query:* {text}\n*ATR Reply:* {atr_reply}"
+            "blocks": blocks
         }
         requests.post(response_url, json=slack_payload)
 
@@ -57,7 +104,7 @@ def handle_slack_command(text, response_url):
 
 @app.route("/")
 def index():
-    return "✅ Flask app for Slack and ATR is running on Render!"
+    return "✅ Flask app for Slack and ATR is running locally!"
 
 @app.route('/slack/commands', methods=['POST'])
 def slack_commands():
