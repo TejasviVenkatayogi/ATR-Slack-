@@ -1,7 +1,6 @@
 from flask import Flask, request
 import threading
 import requests
-import json
 
 app = Flask(__name__)
 
@@ -9,45 +8,6 @@ app = Flask(__name__)
 ATR_USERNAME = "ChatbotTestuser"
 ATR_PASSWORD = "User@1234"
 ATR_BASE_URL = "https://dh1-internalatrgm.atrmywizard-aiops.com"
-
-def build_slack_blocks_from_attachments(attachments):
-    try:
-        blocks = []
-
-        if attachments.get("body"):
-            for block in attachments["body"]:
-                if block["type"] == "TextBlock":
-                    blocks.append({
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": block["text"]
-                        }
-                    })
-
-        if attachments.get("actions"):
-            buttons = []
-            for action in attachments["actions"]:
-                buttons.append({
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": action["title"]
-                    },
-                    "value": action["data"]["msteams"]["text"]
-                })
-            if buttons:
-                blocks.append({
-                    "type": "actions",
-                    "elements": buttons
-                })
-
-        return blocks
-    except Exception as e:
-        return [{
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": f"❌ Error parsing attachments: {e}"}
-        }]
 
 def handle_slack_command(text, response_url):
     try:
@@ -76,29 +36,15 @@ def handle_slack_command(text, response_url):
         atr_response.raise_for_status()
         atr_data = atr_response.json()
 
-        # Step 3: Process response
-        blocks = []
-        speech = atr_data.get("result", {}).get("speech", "")
-        if speech:
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*Query:* {text}\n*ATR Reply:* {speech}"
-                }
-            })
+        # Step 3: Format reply
+        #atr_reply = atr_data.get("answers", [{}])[0].get("answer", "No response from ATR.")
+        atr_reply = atr_data.get("result", {}).get("speech", "🤖 No speech response from ATR.")
 
-        attachments = atr_data.get("attachments")
-        if attachments:
-            blocks.extend(build_slack_blocks_from_attachments(attachments))
 
         # Step 4: Respond to Slack
         slack_payload = {
             "response_type": "in_channel",
-            "blocks": blocks if blocks else [{
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "🤖 No response content from ATR."}
-            }]
+            "text": f"*Query:* {text}\n*ATR Reply:* {atr_reply}"
         }
         requests.post(response_url, json=slack_payload)
 
@@ -118,14 +64,6 @@ def slack_commands():
     text = request.form.get('text')
     response_url = request.form.get('response_url')
     threading.Thread(target=handle_slack_command, args=(text, response_url)).start()
-    return "", 200
-
-@app.route('/slack/interactions', methods=['POST'])
-def slack_interactions():
-    payload = json.loads(request.form.get("payload"))
-    user_query = payload["actions"][0]["value"]
-    response_url = payload.get("response_url")
-    threading.Thread(target=handle_slack_command, args=(user_query, response_url)).start()
     return "", 200
 
 if __name__ == '__main__':
