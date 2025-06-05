@@ -92,7 +92,7 @@ def handle_slack_command(text, response_url):
                                 "type": "plain_text",
                                 "text": button["title"]
                             },
-                            "value": button["data"]["msteams"]["text"],
+                            "value": button.get("data", {}).get("msteams", {}).get("text", button["title"]),
                             "action_id": "button_action"
                         }
                         for button in item.get("actions", [])
@@ -111,7 +111,7 @@ def handle_slack_command(text, response_url):
                             "type": "plain_text",
                             "text": action["title"]
                         },
-                        "value": action["data"]["msteams"]["text"],
+                        "value": action.get("data", {}).get("msteams", {}).get("text", action["title"]),
                         "action_id": "final_action"
                     }
                     for action in attachments["actions"]
@@ -154,9 +154,18 @@ def slack_commands():
 @app.route('/slack/interactions', methods=['POST'])
 def slack_interactions():
     payload = json.loads(request.form.get("payload"))
+    print("Slack Interaction Payload:")
+    print(json.dumps(payload, indent=2))
+
     response_url = payload.get("response_url")
     action = payload.get("actions")[0]
-    selected_value = action.get("selected_option", {}).get("value") or action.get("value")
+    selected_value = (
+        action.get("selected_option", {}).get("value") or
+        action.get("value") or
+        action.get("text", {}).get("text") or
+        ""
+    )
+    print(f"Selected value: {selected_value}")
     threading.Thread(target=handle_slack_command, args=(selected_value, response_url)).start()
     return "", 200
 
