@@ -151,5 +151,14 @@ def slack_commands():
     threading.Thread(target=handle_slack_command, args=(text, response_url)).start()
     return "", 200
 
+@app.route('/slack/interactions', methods=['POST'])
+def slack_interactions():
+    payload = json.loads(request.form.get("payload"))
+    response_url = payload.get("response_url")
+    action = payload.get("actions")[0]
+    selected_value = action.get("selected_option", {}).get("value") or action.get("value")
+    threading.Thread(target=handle_slack_command, args=(selected_value, response_url)).start()
+    return "", 200
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
